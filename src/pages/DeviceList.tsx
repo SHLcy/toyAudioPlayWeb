@@ -52,7 +52,7 @@ export default function DeviceList() {
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: '获取设备列表失败',
+        title: '获取玩具列表失败',
         description: error.data || '请稍后重试',
       })
       setToys([]) // Ensure toys is always an array even on error
@@ -86,7 +86,7 @@ export default function DeviceList() {
     if (selectedToys.length === 0) {
       toast({
         variant: 'destructive',
-        title: '请至少选择一个设备',
+        title: '请至少选择一个玩具',
       })
       return
     }
@@ -122,7 +122,7 @@ export default function DeviceList() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <h1 className="text-xl font-bold">设备列表</h1>
+          <h1 className="text-xl font-bold">玩具列表</h1>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -151,7 +151,7 @@ export default function DeviceList() {
           <div className="text-center py-8">加载中...</div>
         ) : toys.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            暂无设备，请添加玩具
+            暂无玩具，请添加玩具
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -160,7 +160,7 @@ export default function DeviceList() {
                 key={toy.id}
                 className="rounded-lg border bg-card p-4 shadow-sm"
               >
-                <h3 className="font-semibold">{toy.name || '未命名设备'}</h3>
+                <h3 className="font-semibold">{toy.name || '未命名玩具'}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">
                   SN: {toy.sn || 'N/A'}
                 </p>
@@ -175,7 +175,7 @@ export default function DeviceList() {
           <DialogHeader>
             <DialogTitle>播放音频</DialogTitle>
             <DialogDescription>
-              输入要播放的内容，并选择要推送的设备
+              输入要播放的内容，并选择要推送的玩具
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -190,7 +190,7 @@ export default function DeviceList() {
               />
             </div>
             <div className="space-y-2">
-              <Label>选择设备</Label>
+              <Label>选择玩具</Label>
               <div className="max-h-60 space-y-2 overflow-y-auto">
                 {toys.map((toy) => (
                   <div key={toy.id} className="flex items-center space-x-2">
@@ -203,7 +203,7 @@ export default function DeviceList() {
                       htmlFor={`toy-${toy.id}`}
                       className="cursor-pointer font-normal"
                     >
-                      {toy.name || toy.sn || '未命名设备'}
+                      {toy.name || toy.sn || '未命名玩具'}
                     </Label>
                   </div>
                 ))}
