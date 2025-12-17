@@ -17,6 +17,8 @@ interface Toy {
   [key: string]: any
 }
 
+const COMMON_PHRASES_KEY = 'audio_common_phrases'
+
 export default function DeviceList() {
   const [toys, setToys] = useState<Toy[]>([])
   const [loading, setLoading] = useState(true)
@@ -24,11 +26,24 @@ export default function DeviceList() {
   const [audioContent, setAudioContent] = useState('')
   const [selectedToys, setSelectedToys] = useState<string[]>([])
   const [pushing, setPushing] = useState(false)
+  const [commonPhrases, setCommonPhrases] = useState<string[]>([])
   const navigate = useNavigate()
   const { toast } = useToast()
 
   useEffect(() => {
     fetchToys()
+    // Load common phrases from localStorage
+    const savedPhrases = localStorage.getItem(COMMON_PHRASES_KEY)
+    if (savedPhrases) {
+      try {
+        const phrases = JSON.parse(savedPhrases)
+        if (Array.isArray(phrases)) {
+          setCommonPhrases(phrases)
+        }
+      } catch (e) {
+        console.error('Failed to parse common phrases:', e)
+      }
+    }
   }, [])
 
   const fetchToys = async () => {
@@ -74,6 +89,24 @@ export default function DeviceList() {
     )
   }
 
+  const saveCommonPhrase = (phrase: string) => {
+    if (!phrase.trim()) return
+    
+    setCommonPhrases((prev) => {
+      // Remove if already exists
+      const filtered = prev.filter((p) => p !== phrase)
+      // Add to the beginning and keep only 5
+      const updated = [phrase, ...filtered].slice(0, 5)
+      // Save to localStorage
+      localStorage.setItem(COMMON_PHRASES_KEY, JSON.stringify(updated))
+      return updated
+    })
+  }
+
+  const handleSelectCommonPhrase = (phrase: string) => {
+    setAudioContent(phrase)
+  }
+
   const handlePushAudio = async () => {
     if (!audioContent.trim()) {
       toast({
@@ -101,6 +134,8 @@ export default function DeviceList() {
       )
 
       await Promise.all(promises)
+      // Save to common phrases
+      saveCommonPhrase(audioContent.trim())
       toast({
         title: '音频推送成功',
       })
@@ -188,6 +223,25 @@ export default function DeviceList() {
                 onChange={(e) => setAudioContent(e.target.value)}
                 rows={4}
               />
+              {commonPhrases.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">常用语句</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {commonPhrases.map((phrase, index) => (
+                      <Button
+                        key={index}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSelectCommonPhrase(phrase)}
+                        className="text-xs"
+                      >
+                        {phrase.length > 20 ? `${phrase.substring(0, 20)}...` : phrase}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label>选择玩具</Label>
