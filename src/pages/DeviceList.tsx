@@ -18,8 +18,10 @@ interface Toy {
 }
 
 const COMMON_PHRASES_KEY = 'audio_common_phrases'
+const COMMON_URLS_KEY = 'audio_common_urls'
 const SELECTED_TOYS_KEY = 'audio_selected_toys'
 const LAST_AUDIO_CONTENT_KEY = 'audio_last_content'
+const CONTENT_TYPE_KEY = 'audio_content_type'
 
 export default function DeviceList() {
   const [toys, setToys] = useState<Toy[]>([])
@@ -29,6 +31,8 @@ export default function DeviceList() {
   const [selectedToys, setSelectedToys] = useState<string[]>([])
   const [pushing, setPushing] = useState(false)
   const [commonPhrases, setCommonPhrases] = useState<string[]>([])
+  const [commonUrls, setCommonUrls] = useState<string[]>([])
+  const [contentType, setContentType] = useState<'text' | 'url'>('text')
   const navigate = useNavigate()
   const { toast } = useToast()
 
@@ -44,6 +48,18 @@ export default function DeviceList() {
         }
       } catch (e) {
         console.error('Failed to parse common phrases:', e)
+      }
+    }
+    // Load common URLs from localStorage
+    const savedUrls = localStorage.getItem(COMMON_URLS_KEY)
+    if (savedUrls) {
+      try {
+        const urls = JSON.parse(savedUrls)
+        if (Array.isArray(urls)) {
+          setCommonUrls(urls)
+        }
+      } catch (e) {
+        console.error('Failed to parse common URLs:', e)
       }
     }
   }, [])
@@ -74,6 +90,12 @@ export default function DeviceList() {
       const lastContent = localStorage.getItem(LAST_AUDIO_CONTENT_KEY)
       if (lastContent) {
         setAudioContent(lastContent)
+      }
+      
+      // Load last content type
+      const savedContentType = localStorage.getItem(CONTENT_TYPE_KEY)
+      if (savedContentType === 'text' || savedContentType === 'url') {
+        setContentType(savedContentType)
       }
     }
   }, [audioDialogOpen, toys])
@@ -139,6 +161,24 @@ export default function DeviceList() {
     setAudioContent(phrase)
   }
 
+  const saveCommonUrl = (url: string) => {
+    if (!url.trim()) return
+    
+    setCommonUrls((prev) => {
+      // Remove if already exists
+      const filtered = prev.filter((u) => u !== url)
+      // Add to the beginning and keep only 5
+      const updated = [url, ...filtered].slice(0, 5)
+      // Save to localStorage
+      localStorage.setItem(COMMON_URLS_KEY, JSON.stringify(updated))
+      return updated
+    })
+  }
+
+  const handleSelectCommonUrl = (url: string) => {
+    setAudioContent(url)
+  }
+
   const handlePushAudio = async () => {
     if (!audioContent.trim()) {
       toast({
@@ -160,18 +200,25 @@ export default function DeviceList() {
     try {
       const promises = selectedToys.map((toyId) =>
         pushAudioAPI(toyId, {
-          content_type: 'text',
+          content_type: contentType,
           content: audioContent,
         })
       )
 
       await Promise.all(promises)
-      // Save to common phrases
-      saveCommonPhrase(audioContent.trim())
+      // Save to common phrases only for text content
+      if (contentType === 'text') {
+        saveCommonPhrase(audioContent.trim())
+      } else if (contentType === 'url') {
+        // Save to common URLs for URL content
+        saveCommonUrl(audioContent.trim())
+      }
       // Save selected toys to localStorage
       localStorage.setItem(SELECTED_TOYS_KEY, JSON.stringify(selectedToys))
       // Save last input content
       localStorage.setItem(LAST_AUDIO_CONTENT_KEY, audioContent.trim())
+      // Save content type
+      localStorage.setItem(CONTENT_TYPE_KEY, contentType)
       toast({
         title: '音频推送成功',
       })
@@ -244,7 +291,7 @@ export default function DeviceList() {
         open={audioDialogOpen} 
         onOpenChange={(open) => {
           setAudioDialogOpen(open)
-          // Save selected toys and content when dialog closes
+          // Save selected toys, content and content type when dialog closes
           if (!open) {
             if (selectedToys.length > 0) {
               localStorage.setItem(SELECTED_TOYS_KEY, JSON.stringify(selectedToys))
@@ -252,6 +299,7 @@ export default function DeviceList() {
             if (audioContent.trim()) {
               localStorage.setItem(LAST_AUDIO_CONTENT_KEY, audioContent.trim())
             }
+            localStorage.setItem(CONTENT_TYPE_KEY, contentType)
           }
         }}
       >
@@ -264,15 +312,35 @@ export default function DeviceList() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="content">内容</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="content">内容</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={contentType === 'text' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setContentType('text')}
+                  >
+                    文本
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={contentType === 'url' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setContentType('url')}
+                  >
+                    URL
+                  </Button>
+                </div>
+              </div>
               <Textarea
                 id="content"
-                placeholder="请输入要播放的内容"
+                placeholder={contentType === 'url' ? '请输入URL地址' : '请输入要播放的内容'}
                 value={audioContent}
                 onChange={(e) => setAudioContent(e.target.value)}
                 rows={4}
               />
-              {commonPhrases.length > 0 && (
+              {contentType === 'text' && commonPhrases.length > 0 && (
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">常用语句</Label>
                   <div className="flex flex-wrap gap-2">
@@ -286,6 +354,25 @@ export default function DeviceList() {
                         className="text-xs"
                       >
                         {phrase.length > 20 ? `${phrase.substring(0, 20)}...` : phrase}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {contentType === 'url' && commonUrls.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">常用URL</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {commonUrls.map((url, index) => (
+                      <Button
+                        key={index}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSelectCommonUrl(url)}
+                        className="text-xs"
+                      >
+                        {url.length > 30 ? `${url.substring(0, 30)}...` : url}
                       </Button>
                     ))}
                   </div>
