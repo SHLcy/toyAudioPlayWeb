@@ -18,6 +18,8 @@ interface Toy {
 }
 
 const COMMON_PHRASES_KEY = 'audio_common_phrases'
+const SELECTED_TOYS_KEY = 'audio_selected_toys'
+const LAST_AUDIO_CONTENT_KEY = 'audio_last_content'
 
 export default function DeviceList() {
   const [toys, setToys] = useState<Toy[]>([])
@@ -45,6 +47,36 @@ export default function DeviceList() {
       }
     }
   }, [])
+
+  // Load previously selected toys and content when dialog opens
+  useEffect(() => {
+    if (audioDialogOpen && toys.length > 0) {
+      // Load previously selected toys
+      const savedSelectedToys = localStorage.getItem(SELECTED_TOYS_KEY)
+      if (savedSelectedToys) {
+        try {
+          const savedIds = JSON.parse(savedSelectedToys)
+          if (Array.isArray(savedIds)) {
+            // Only select toys that still exist
+            const validIds = savedIds.filter((id: string) =>
+              toys.some((toy) => toy.id === id)
+            )
+            if (validIds.length > 0) {
+              setSelectedToys(validIds)
+            }
+          }
+        } catch (e) {
+          console.error('Failed to parse selected toys:', e)
+        }
+      }
+      
+      // Load last input content
+      const lastContent = localStorage.getItem(LAST_AUDIO_CONTENT_KEY)
+      if (lastContent) {
+        setAudioContent(lastContent)
+      }
+    }
+  }, [audioDialogOpen, toys])
 
   const fetchToys = async () => {
     try {
@@ -136,12 +168,15 @@ export default function DeviceList() {
       await Promise.all(promises)
       // Save to common phrases
       saveCommonPhrase(audioContent.trim())
+      // Save selected toys to localStorage
+      localStorage.setItem(SELECTED_TOYS_KEY, JSON.stringify(selectedToys))
+      // Save last input content
+      localStorage.setItem(LAST_AUDIO_CONTENT_KEY, audioContent.trim())
       toast({
         title: '音频推送成功',
       })
       setAudioDialogOpen(false)
-      setAudioContent('')
-      setSelectedToys([])
+      // Keep audioContent and selectedToys for next time
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -205,7 +240,21 @@ export default function DeviceList() {
         )}
       </main>
 
-      <Dialog open={audioDialogOpen} onOpenChange={setAudioDialogOpen}>
+      <Dialog 
+        open={audioDialogOpen} 
+        onOpenChange={(open) => {
+          setAudioDialogOpen(open)
+          // Save selected toys and content when dialog closes
+          if (!open) {
+            if (selectedToys.length > 0) {
+              localStorage.setItem(SELECTED_TOYS_KEY, JSON.stringify(selectedToys))
+            }
+            if (audioContent.trim()) {
+              localStorage.setItem(LAST_AUDIO_CONTENT_KEY, audioContent.trim())
+            }
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>播放音频</DialogTitle>
